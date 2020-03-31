@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+
+    
+
+    <title>
+      afl-unicorn: part2_fuzzing_the_unfuzzable | Hexo 
+    </title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    
+      <meta name="author" content="John Doe">
+    
+    
+
+    <meta name="description" content="翻译原文来自：https:&#x2F;&#x2F;hackernoon.com&#x2F;afl-unicorn-part-2-fuzzing-the-unfuzzable-bea8de3540a5 前言如我上一篇文章中所示，unicorn 模式在表面上并不太有用。它有很多局限性，使得在大多数实际情况下使用起来笨拙且缓慢。 例如，如果你要模拟的二进制文件调用了一个导入的库函数，该函数很可能会调用内核，例如 malloc() 或">
+<meta property="og:type" content="article">
+<meta property="og:title" content="afl-unicorn: part2_fuzzing_the_unfuzzable | Hexo">
+<meta property="og:url" content="http://yoursite.com/2020/03/31/afl-unicorn-part2-fuzzing-the-unfuzzable/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="翻译原文来自：https:&#x2F;&#x2F;hackernoon.com&#x2F;afl-unicorn-part-2-fuzzing-the-unfuzzable-bea8de3540a5 前言如我上一篇文章中所示，unicorn 模式在表面上并不太有用。它有很多局限性，使得在大多数实际情况下使用起来笨拙且缓慢。 例如，如果你要模拟的二进制文件调用了一个导入的库函数，该函数很可能会调用内核，例如 malloc() 或">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2020-03-31T04:27:50.000Z">
+<meta property="article:modified_time" content="2020-03-31T04:28:50.458Z">
+<meta property="article:author" content="John Doe">
+<meta name="twitter:card" content="summary">
+    
+    
+    
+      <link rel="icon" type="image/x-icon" href="/favicon.png">
+    
+    
+<link rel="stylesheet" href="/css/uno.css">
+
+    
+<link rel="stylesheet" href="/css/highlight.css">
+
+    
+<link rel="stylesheet" href="/css/archive.css">
+
+    
+<link rel="stylesheet" href="/css/china-social-icon.css">
+
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+<body>
+
+    <span class="mobile btn-mobile-menu">
+        <i class="icon icon-list btn-mobile-menu__icon"></i>
+        <i class="icon icon-x-circle btn-mobile-close__icon hidden"></i>
+    </span>
+
+    
+
+<header class="panel-cover panel-cover--collapsed">
+
+
+  <div class="panel-main">
+
+  
+    <div class="panel-main__inner panel-inverted">
+    <div class="panel-main__content">
+
+        
+
+        <h1 class="panel-cover__title panel-title"><a href="/" title="link to homepage">Hexo</a></h1>
+        <hr class="panel-cover__divider" />
+
+        
+
+        <div class="navigation-wrapper">
+
+          <nav class="cover-navigation cover-navigation--primary">
+            <ul class="navigation">
+
+              
+                
+                <li class="navigation__item"><a href="/#blog" title="" class="blog-button">首页</a></li>
+              
+                
+                <li class="navigation__item"><a href="/about" title="" class="">关于</a></li>
+              
+                
+                <li class="navigation__item"><a href="/archive" title="" class="">归档</a></li>
+              
+
+            </ul>
+          </nav>
+
+          <!-- ----------------------------
+To add a new social icon simply duplicate one of the list items from below
+and change the class in the <i> tag to match the desired social network
+and then add your link to the <a>. Here is a full list of social network
+classes that you can use:
+
+    icon-social-500px
+    icon-social-behance
+    icon-social-delicious
+    icon-social-designer-news
+    icon-social-deviant-art
+    icon-social-digg
+    icon-social-dribbble
+    icon-social-facebook
+    icon-social-flickr
+    icon-social-forrst
+    icon-social-foursquare
+    icon-social-github
+    icon-social-google-plus
+    icon-social-hi5
+    icon-social-instagram
+    icon-social-lastfm
+    icon-social-linkedin
+    icon-social-medium
+    icon-social-myspace
+    icon-social-path
+    icon-social-pinterest
+    icon-social-rdio
+    icon-social-reddit
+    icon-social-skype
+    icon-social-spotify
+    icon-social-stack-overflow
+    icon-social-steam
+    icon-social-stumbleupon
+    icon-social-treehouse
+    icon-social-tumblr
+    icon-social-twitter
+    icon-social-vimeo
+    icon-social-xbox
+    icon-social-yelp
+    icon-social-youtube
+    icon-social-zerply
+    icon-mail
+
+-------------------------------->
+
+<!-- add social info here -->
+
+
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <div class="panel-cover--overlay"></div>
+  </div>
+</header>
+
+    <div class="content-wrapper">
+        <div class="content-wrapper__inner entry">
+            
+
+<article class="post-container post-container--single">
+
+  <header class="post-header">
+    
+    <h1 class="post-title">afl-unicorn: part2_fuzzing_the_unfuzzable</h1>
+
+    
+
+    <div class="post-meta">
+      <time datetime="2020-03-31" class="post-meta__date date">2020-03-31</time> 
+
+      <span class="post-meta__tags tags">
+
+          
+
+          
+
+      </span>
+    </div>
+    
+    
+
+  </header>
+
+  <section id="post-content" class="article-content post">
+    <p>翻译原文来自：<a href="https://hackernoon.com/afl-unicorn-part-2-fuzzing-the-unfuzzable-bea8de3540a5" target="_blank" rel="noopener">https://hackernoon.com/afl-unicorn-part-2-fuzzing-the-unfuzzable-bea8de3540a5</a></p>
+<h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>如我<a href="https://hackernoon.com/afl-unicorn-fuzzing-arbitrary-binary-code-563ca28936bf" target="_blank" rel="noopener">上一篇文章</a>中所示，unicorn 模式在表面上并不太有用。它有很多局限性，使得在大多数实际情况下使用起来笨拙且缓慢。</p>
+<p>例如，如果你要模拟的二进制文件调用了一个导入的库函数，该函数很可能会调用内核，例如 malloc() 或 printf()? 如果您要模糊化的代码是高度有状态的，并且需要很多在运行时才知道的内存区域（堆分配，堆栈指针，全局变量等），该怎么办？</p>
+<p>事实上，我发现的唯一直接使用它的方法是使用调试器从固件恢复的平坦嵌入式运行时系统内存快照。</p>
+<p>本文介绍了我和我的同事 [Parker Wiksell][2] 开发的一些新工具和技术，旨在将 afl-unicorn 应用于 Windows，Linux，Android 和 iOS 应用程序。</p>
+<p>![image.png-41.9kB][3]</p>
+<p><strong>Afl-unicorn 弥补了全手工研究的彻底性和 AFL 易用性之间的差距</strong>。只需一点点逆向工程和设置时间，afl-unicorn 就可以让您利用 AFL 的功能来快速发现您知道可疑的代码部分中的漏洞，并对它们的工作有基本的了解。</p>
+<h2 id="一般工作流程"><a href="#一般工作流程" class="headerlink" title="一般工作流程"></a>一般工作流程</h2><p>虽然之前的博客文章描述了 afl-unicorn 如何工作的基本机制并提供了一个简单示例，但该文章旨在提供一种更现实的方式来将其用于在操作系统（例如 Windows，Linux）上运行的应用程序，Android 或 iOS）。实际上，您将真正想了解 afl-unicorn 的功能并将其适应于您的特定问题，以确保您不会（或知道如何识别）假阳性和阴性。</p>
+<p>![image.png-27.5kB][4]</p>
+<p>第一个任务是逆向工程一些基本的知识，逆向你想模糊的代码。这包括确定一个好的起点和终点，以及代码如何接收您要进行变异的输入。</p>
+<p>假设你标识了网络数据包的顶级解析函数。该函数是否将数据包从线路上取下来作为参数？这是如何传递到函数中的？很可能，这将通过全局分配的缓冲区、堆栈上的指针或寄存器中的指针实现。</p>
+<p>您还需要（尽可能地）弄清楚输入上有哪些约束。例如，最大大小是多少？是否有无效字符？请确保在所选起始地址的上下文中考虑这一点，因为这些约束会随着时间的推移而改变，因为代码会过滤出无效的输入，并在整个输入处理过程中分配各种大小的缓冲区。</p>
+<p>一旦所有的研究都完成了，您将希望在处理有效输入时在起始地址捕获进程的快照。<strong>我们通过创建一系列 “Unicorn Context Dumper” 脚本来实现这一点，这些脚本在启动地址的调试器断点处运行时，会将整个进程内存、寄存器值和体系结构信息保存到磁盘上的 “Context 目录” 中</strong>。</p>
+<p>现在，您需要编写一个 Unicorn 脚本，该脚本加载你转储的进程上下文，加载要用从磁盘上的文件读取的数据模糊化的输入，并从起始地址到结束地址进行模拟。<strong>如果在模拟过程中检测到任何错误或崩溃，则此脚本必须强制自身崩溃</strong>，以便 AFL 能够检测到它。我们创建了一组称为 “Unicorn Loader” 模块的 helper 实用程序，使大多数任务变得简单。“Unicorn Loader” 还包括一个完整的备用堆管理器，它有助于防止模拟典型操作系统应用程序时发生的模拟错误… 稍后将对此进行详细介绍。</p>
+<p>一旦你的 Unicorn 测试工具脚本能够成功地从起始地址到结束地址进行模拟（并完成上面提到的所有其他工作），<strong>就可以创建一些有效的、非崩溃的示例输入，并在 afl-Unicorn 下运行它</strong>，如[第一篇博客文章][5]中所述。运气好的话，你会发现有很多路径被发现，希望会有一些 crash！</p>
+<h2 id="一个具体的例子：CGC’s-FSK-Messaging-Service"><a href="#一个具体的例子：CGC’s-FSK-Messaging-Service" class="headerlink" title="一个具体的例子：CGC’s FSK_Messaging_Service"></a>一个具体的例子：CGC’s FSK_Messaging_Service</h2><h3 id="例子描述"><a href="#例子描述" class="headerlink" title="例子描述"></a>例子描述</h3><p>Trail of Bits 最近发布了 [cb-multios][6]，其中包含来自 DARPA 的 [Cyber Grand Challenge][7] 的挑战，以及使它们易于在Linux上编译和运行的附加支持库。在这个例子中，我将演示如何使用afl unicorn来模糊化一个特别设计为难以模糊化的挑战的解析功能：<strong>[FSK_Messaging_Service][8]</strong>：</p>
+<blockquote>
+<p>[FSK_Messaging_Service] 为一种实现分组无线电接收机的服务，包括前端 FSK 解调、分组解码、处理，最后将其解析为一个简单的消息传送服务。</p>
+</blockquote>
+<p>FSK_Messaging_Service 是专门为挑战 fuzzing 而设计的。虽然潜在的漏洞相当简单，但在对模拟射频输入进行广泛的解析和解调后，仍然存在漏洞。此外，数据本身附加了一个简单的 16 位校验和，必须在执行完全解析之前进行验证。从对挑战的描述来看：</p>
+<blockquote>
+<p>这个 [challenge binary] 对计算机推理系统提出了许多挑战。难点在于输入集经过射频前端转换为处理后的数据。由于其本质，<strong>模糊化将是无效的</strong>，因为射频接收器自然会受到噪声的影响，特别适合在存在噪声的情况下识别信号[……]因此，主观上认为这项[挑战]是困难的，其设计目的是测试最先进的输入推理能力和解算器。</p>
+</blockquote>
+<p>以下是显示FSK_Messaging_服务应用程序的总体逻辑和数据流的图表：</p>
+<p>![image.png-90.9kB][9]</p>
+<h3 id="找到我们需要模拟和-fuzzing-的目标代码"><a href="#找到我们需要模拟和-fuzzing-的目标代码" class="headerlink" title="找到我们需要模拟和 fuzzing 的目标代码"></a>找到我们需要模拟和 fuzzing 的目标代码</h3><p>OK。所以我们不能模糊前向的界面，但是通过对代码的一点分析（或者如果我们没有源代码的话进行反汇编），很容易找到直觉告诉我们最有可能存在错误的函数：packet.c 中      <code>cgc_receive_packet()</code>。这个函数相当简单，执行了以下操作：</p>
+<ul>
+<li><p>验证数据包缓冲区不为空且其长度大于 0</p>
+</li>
+<li><p>通过计算和比较 16 位 CRC 验证包内容</p>
+</li>
+<li><p>在数据包类型上循环，如果匹配，则调用 <code>cgc_add_new_packet()</code></p>
+</li>
+<li><p>如果找到有效的数据包类型，<code>cgc_add_new_packet()</code> 将实例化 tSinglePacketData 结构并从数据包中复制信息</p>
+</li>
+</ul>
+<p>下面是一个稍微修改过的源代码片段集合，其中显示了相关部分：</p>
+<p>![image.png-187.9kB][10]</p>
+<p>当然，实际上你很可能没有可用的源代码。相反，你将不得不使用传统的逆向工程方法（静态和动态分析）来分析有关目标应用程序的所有必要信息。</p>
+<p>因此，现在我们有了模糊目标和如何给出输入的知识：</p>
+<ul>
+<li><p>我们想从 cgc_receive_packet() 函数中模糊</p>
+</li>
+<li><p>输入以 3 个参数的形式传递给函数：指向数据包数据的指针（uint8_t*pData）、相应的长度（uint8_t dataLen）和数据的校验和（uint16_t packetCRC）</p>
+</li>
+</ul>
+<p>我们也知道了限制输入的一个条件：</p>
+<ul>
+<li>由于 data 长度是 8 位，因此最大数据长度为 256 字节</li>
+</ul>
+<h3 id="转储有效的运行进程上下文"><a href="#转储有效的运行进程上下文" class="headerlink" title="转储有效的运行进程上下文"></a>转储有效的运行进程上下文</h3><p>现在我们要获取整个进程内存的快照，因为调用此函数是为了使模拟尽可能简单。与更简单的方法（如 ripr 或 uEmu 提供的就地仿真）相比，这看起来是一种繁重的方法，它解决了大量问题。例如，全局列表 <code>cgc_g_packet handlers</code> 是在运行时填充的，因此除非我们有其内存位置的运行时状态，否则在 <code>cgc_packet_receive()</code> 中遍历处理程序的 For 循环将在仿真期间失败。</p>
+<p>转储整个进程内存状态和寄存器上下文是使用 “Unicorn context Dumper” 脚本完成的。我们已经创建了几个不同的版本来支持不同的调试器，包括 IDA Pro（现在是版本 7 之前的版本）、LLDB 和带有 GEF 的 GDB。目前只有 IDA 版本可用，但其他版本（以及为其他调试器创建的任何其他版本）将在准备就绪后立即推送到 GitHub。只需将 IDA Pro 的调试器附加到一个正在运行的 FSK_Message_Service 进程，在 fuzzing 开始地址处命中一个断点，然后通过 IDA 运行脚本（file -&gt; script file …）。注意，我只在 IDA 内置的远程调试服务器上测试过。附加到其他调试器可能会以不同的方式显示内存段，这可能会导致错误。</p>
+<p>我选择在调用 <code>cgc_packet_receive()</code> 之前设置我的起始地址，在这个位置，参数可以方便地全部放在寄存器中而不是堆栈上。这使得在我的 Unicorn 仿真脚本中修改它们更容易一些。</p>
+<p>![image.png-87.5kB][11]</p>
+<p>脚本完成后，它将在与 IDA 数据库（.idb）相同的文件夹中生成一个 “Unicorn Context” 目录。此目录包含两项内容：</p>
+<ul>
+<li><p>index_json：一个 json 格式的文件，包含进程中所有内存段、注册状态和体系结构信息的元数据</p>
+</li>
+<li><p>大量 gzip 压缩二进制文件，其中包含进程中每个单独内存段的内容</p>
+</li>
+</ul>
+<p>![image.png-44kB][12]</p>
+<p>![image.png-76.9kB][13]</p>
+<h3 id="创建一个-Fuzzable-Unicorn-测试工具"><a href="#创建一个-Fuzzable-Unicorn-测试工具" class="headerlink" title="创建一个 Fuzzable Unicorn 测试工具"></a>创建一个 Fuzzable Unicorn 测试工具</h3><p>现在我们有了一个开始模拟的上下文，我们编写了一个 Unicorn 脚本来加载上下文（映射所有内存区域，将内容加载到其中，并设置寄存器内容），hook 任何会破坏模拟或阻止模糊化的内容（malloc()，free()，校验和验证，等等），在适当的地方嵌入一个新的包，并从头到尾模拟代码。我已经创建了一个[简单的模板][14]作为一个示例测试工具。</p>
+<p>下面显示的是一个完整的 Unicorn 脚本，它可以模拟 <code>FSK_Message_Service</code> 应用程序的应用层数据包解析，从 Unicorn 上下文转储程序生成的上下文目录加载的初始状态开始。此脚本在很大程度上依赖于从 afl-unicorn 提供的 unicorn_loader.py 模块导入的功能。我们将在下面讨论一些更有趣的内容，但在大多数情况下，这将遵循我在上一篇博客文章中讨论的基本步骤。</p>
+<p>![image.png-187.9kB][15]</p>
+<p>这个脚本有几个独特的部分，使仿真和模糊化成为可能。每一个都在下面详细描述：</p>
+<p><strong>从转储上下文实例化 Unicorn 引擎实例</strong>：Unicorn_loader.py 模块提供了一个新的 AflUnicornEngine 类，该类派生自普通 UnicornEngine。构造函数有 3 个参数：指向上下文目录的路径、在 STDOUT 上启用跟踪输出的标志，以及在将上下文加载到 STDOUT 时启用调试输出的标志。</p>
+<p>![image.png-6.2kB][16]</p>
+<p>AflUnicornEngine 类而且提供了一些有用的附加 APIs 来作为 fuzzing 的测试工具：</p>
+<ul>
+<li><p>dump_regs()：将当前寄存器内容转储到 STDOUT</p>
+</li>
+<li><p>force_crash(e)：通过发出信号（SIGILL、SIGSEGV、SIGABRT 等）来强制测试线束崩溃。这让 AFL 检测到发生了崩溃，并进行适当的日志记录。如果发生崩溃条件（例如 emu_start() 引发异常），则必须调用此函数！</p>
+</li>
+</ul>
+<p>因为这个类是从 UnicornEngine 类派生的，所以您仍然可以使用所有正常的调用，比如 emu_start()、reg_read() 和 mem_write()。要查看 AflUnicornEngine 类上可用的所有 api，请阅读 [unicorn_loader 模块的源代码。][17]</p>
+<p><strong>Hooking 所有堆分配（malloc()</strong>）：在仿真期间调用 malloc() 可能会导致各种问题。可能分配器需要向内核请求更多的内存，但是在仿真过程中，我们没有内核这样的东西…… 所以这会导致崩溃。为了防止这种情况，Unicorn 脚本 hook 对 malloc() 的任何调用，而是调用 Unicorn_loader.py 模块中随 afl-Unicorn 提供的基于 Unicorn 的实现。下面的代码片段显示了用于 FSK_Messaging_Service 二进制文件（32 位 Linux 二进制文件）的代码。</p>
+<p>![image.png-17.3kB][18]</p>
+<p>在第 45 行中，从堆栈中检索字节数。46 行调用内部，基于 Unicorn 的堆实现算法。第 47 行将返回值（已分配的缓冲区的地址）放入 EAX，第 48 行和第 49 行通过将 EIP 设置为返回地址，然后将返回地址弹出堆栈来手动执行“返回”。所有这些都符合典型的 [x86 调用约定][19]。在将此方法调整为您自己的二进制文件时，请确保遵循给定操作系统和体系结构的调用约定！</p>
+<p>![image.png-153.3kB][20]</p>
+<p>自己处理内存分配的另一个主要好处是，我们可以实现自己的[基本保护页][21]。基本上，所有分配的缓冲区都被没有读写权限的 “保护页” 包围。任何超出返回缓冲区边界的访问（也称为堆溢出或下溢）都将立即因内存访问冲突而崩溃。</p>
+<p>请注意，unicorn_loader.py 模块中的 UnicornSimpleHeap 类也提供了 free()、calloc() 和 realloc() 功能，但为了简单起见，我在本例中选择仅 Hook malloc()。为了模拟更大、运行时间更长、更复杂的代码，您可能需要 hook 所有与堆相关的函数。</p>
+<p><strong>跳过不必要的、难以模拟的函数</strong>：还有许多其他事情显然会导致问题。例如，printf() 肯定会调用内核，以便将要打印的文本发送到图形设备进行渲染。您需要分析您试图模拟的代码，并努力识别任何您认为可能会破坏模拟的内容。在本例中，我已经确定 free()、printf() 和 cgc_transmit() 会由于各种原因导致仿真失败，而且我还可以跳过它们，而不会对模糊结果造成任何重大后果。</p>
+<p>通过强制立即返回跳过所有这些函数。这与上述 malloc() 钩子的最后一部分相同：手动将 EIP 设置为存储在堆栈上的返回地址，然后通过向 ESP 添加 4 将返回地址从堆栈中弹出。请记住，这个确切的过程是特定于 x86 的，因此根据目标体系结构的需要进行调整。</p>
+<p>![image.png-181.3kB][22]</p>
+<p><strong>绕过 CRC 验证</strong>：每个接收到的数据包都附带一个 16 位的 CRC，在数据包被验证之前必须对其进行验证（请参阅本文前面源代码片段的第 27-31 行）。仅此一点就对传统的模糊处理提出了重大挑战，因为任何盲目修改数据包的尝试都将导致 CRC 检查失败，几乎没有代码覆盖。这种类型的问题是众所周知的，但传统上它需要修补目标二进制文件或开发，以便为每个输入正确生成有效的校验和。</p>
+<p>Afl-Unicorn 使得绕过这个相当琐碎。在本例中，校验和验证在IDA中很容易识别：</p>
+<p>![image.png-375.3kB][23]</p>
+<p>我们只需将调用 hook 到 <code>cgc_simple_checksum16()</code> ，执行到那里时，EIP 将被手动设置为 “CRC check passes” 路径：</p>
+<p>![image.png-73.7kB][24]</p>
+<p>这并不妨碍我们在以后找出如何计算 CRC 来发现一个完全有效的漏洞，但它让我们可以将这项工作推到最底层，而是先集中精力寻找漏洞。</p>
+<p>在加载变异输入之前模拟一条指令：这是最奇怪的部分，它实际上只是我如何将 AFL 插入 Unicorn 的一个人工制品，因为我[还没有找到解决真正内部问题的方法][25]：为了确保 AFL 的 fork 服务器在正确的时间启动，在从磁盘加载经过修改的输入之前，必须至少模拟 1 条指令。如果没有，那么 AFL 创建的每个 fork 都将使用相同的输入执行。在示例脚本中，这是在第 82 行和第 87 行之间完成的：</p>
+<p>![image.png-100.8kB][26]</p>
+<p>所以基本上，在加载变异输入之前，您只需要在测试工具中的某个地方使用这段代码。不过，有一个细微差别：你需要扪心自问，重新执行第一条指令是否会产生任何负面后果。在本例中，执行的第一条指令是无害的 “mov[esp]，ecx”，因此重新执行它不会产生任何负面后果。如果不想重新执行第一条指令，只需在第二次启动仿真时适当调整起始地址（uc.emu_start()）。</p>
+<h3 id="用-afl-unicorn-fuzzing-模拟二进制"><a href="#用-afl-unicorn-fuzzing-模拟二进制" class="headerlink" title="用 afl-unicorn fuzzing 模拟二进制"></a>用 afl-unicorn fuzzing 模拟二进制</h3><p>完成 unicorn 的配置后，唯一要做的就是在 afl-Unicorn 下运行它，希望它能找到一些崩溃的地方。</p>
+<p>有关如何运行 afl-unicorn 的详细信息，请确保阅读了我以前的博客文章，但对于这个特定实例，我们只运行典型的 afl-unicorn 命令行：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">afl-fuzz -U -m none -i &#x2F;path&#x2F;to&#x2F;inputs&#x2F; -o &#x2F;path&#x2F;to&#x2F;results&#x2F; -- python fsk_message_service_test_harness.py &#x2F;path&#x2F;to&#x2F;context_dir&#x2F; @@</span><br></pre></td></tr></table></figure>
+
+<p>![image.png-88.4kB][27]</p>
+<p>果然，它在 README 文件中描述的 <code>cgc_packet_receive()</code> 函数中发现了漏洞：</p>
+<blockquote>
+<p>当接收到超过最大数据包大小 64 字节的数据包时，对新分配的数据包结构的 memcpy 进行不正确的长度检查。这允许在堆上发生内存覆盖。此数据结构有一个指向可以覆盖的数据包处理程序的函数指针，一旦服务执行此函数指针，就有机会通过覆盖此函数指针来执行控制流。</p>
+</blockquote>
+<p>从转储崩溃的输入文件可以明显看出，对于在 tSinglePacketData 结构中分配的 packetData 缓冲区，数据包太大（&gt;48字节）：</p>
+<p>![image.png-242.5kB][28]</p>
+<p>然后，我们可以通过运行带有崩溃输入的 Unicorn 脚本来验证这一点：</p>
+<p>![image.png-338.2kB][29]</p>
+<p>下一步是找出如何将这个崩溃的输入发送到实际的（非仿真的）应用程序中，并证明它是一个真实的、工作的崩溃，并且它不是源于仿真错误。</p>
+<h2 id="基于调试仿真的模糊问题"><a href="#基于调试仿真的模糊问题" class="headerlink" title="基于调试仿真的模糊问题"></a>基于调试仿真的模糊问题</h2><p>我遇到的一些常见问题包括：</p>
+<ul>
+<li><p><strong>未发现路径</strong>：请确保在加载经过修改的输入之前至少模拟一条指令。否则，每个 fork 都会得到相同的不变输入。在 afl-unicorn 之外自行运行测试线束，并确保它从起始地址运行到结束地址，没有任何问题。如果这不能解决问题，请确保将经过修改的输入正确写入模拟内存并注册上下文。</p>
+</li>
+<li><p><strong>找到太多崩溃的方法</strong>：要么你偶然发现了一些真正的错误代码（头奖！），或者存在仿真问题。遵循仿真调试跟踪输出，查找正在中断仿真的内容，例如基于段寄存器的解引用、对内核的系统调用或动态模块加载。</p>
+</li>
+</ul>
+<p>如果事情看起来不错（新的路径被发现的相当有规律），那么其他的一切都遵循典型的 AFL 使用模式。确保您的示例输入能够很好地覆盖目标代码，并使其模糊到您的核心内容。</p>
+<h2 id="我们在哪里，我们要去哪里"><a href="#我们在哪里，我们要去哪里" class="headerlink" title="我们在哪里，我们要去哪里"></a>我们在哪里，我们要去哪里</h2><p>在这篇文章中，我演示了一个例子，说明了我们如何使用 afl-unicorn 模糊现实世界中难以访问的应用程序接口。我们发现这种方法在 Windows、Linux、Android 和 iOS 应用程序上非常有效，我认为它很容易移植到嵌入式系统。</p>
+<p>未完成的任务主要是继续使用使该方法可用的脚本，并将其扩展到其他操作系统和体系结构。例如，模拟 Windows 应用程序会引入一长串问题，因为对 PEB 和 TIB 的引用会由于对 GS 段寄存器的引用而导致错误崩溃。可以创建特定于操作系统的实用程序（以与 unicorn_loader.py 模块中已经存在的 UnicornSimpleHeap 类类似的方式），以使用最少的检测来处理这些已知的情况。这将非常类似 于usercorn 项目采取的路线。此外，[ripr][30] 项目非常有趣，我相信他们的代码生成方法很有可能被修改或扩展，以生成模板测试工具，这将非常容易使其变得模糊。</p>
+<p>在未来的一篇博客文章中，我计划用 afl-unicorn 来演示如何对从嵌入式系统中检索到的平面运行时内存图像使用 afl-unicorn。这个用例是创建 afl-unicorn 的最初灵感，我仍然相信它是一个理想的环境，因为它避免了试图模拟在更复杂的多线程操作系统中运行的 userland 应用程序时引入的大多数问题。</p>
+<h2 id="感谢"><a href="#感谢" class="headerlink" title="感谢"></a>感谢</h2><p>我开发了 afl-unicorn 和这里描述的方法学，作为一个内部研究项目，与俄亥俄州哥伦布市 Battelle 的 Parker Wiksell 合作。巴特勒是一个很棒的工作场所，而 afl-unicorn 只是在那里进行的许多新颖的网络安全研究的例子之一。更多巴特尔赞助的项目，看看克里斯多马斯和约翰托特瑞（又名 cetfor）以前的工作。有关巴特尔职业的信息，请查看他们的职业页面。</p>
+<p>当然，没有 AFL 和 unicorn 引擎，这一切都是不可能的。许多额外的灵感来自于 Alex Hude 为 IDA 开发的令人敬畏的 uEmu 插件，并且许多通用概念都是从 NCC 集团的 AFLTriforce 项目中借用的。从 usercorn 项目中获得了一些额外的灵感，因为它证明了 Unicorn 可以成功地运行用户空间应用程序。</p>
+<pre><code>[2]: https://medium.com/@pwiksell
+  [3]: http://static.zybuluo.com/H4l0/yxye5jp689rkfc2yl53tfyci/image.png
+    [4]: http://static.zybuluo.com/H4l0/2xmhlx4v9cey1eg87o245ctm/image.png
+      [5]: https://hackernoon.com/afl-unicorn-fuzzing-arbitrary-binary-code-563ca28936bf
+        [6]: https://github.com/trailofbits/cb-multios
+          [7]: https://www.darpa.mil/program/cyber-grand-challenge
+            [8]: https://github.com/trailofbits/cb-multios/tree/master/challenges/FSK_Messaging_Service
+              [9]: http://static.zybuluo.com/H4l0/oha50otlyu8bsz48pas6n31f/image.png
+                [10]: http://static.zybuluo.com/H4l0/zcntihhlkzj8crmy9optctpe/image.png
+                  [11]: http://static.zybuluo.com/H4l0/mjkst3ggy3v3kzinxn5eqyke/image.png
+                    [12]: http://static.zybuluo.com/H4l0/38lfhq2q65xw9yx8mp6fexah/image.png
+                      [13]: http://static.zybuluo.com/H4l0/9c3wpcc2q7n5ylwh6lb2zt4l/image.png
+                        [14]: https://github.com/njv299/afl-unicorn/blob/master/unicorn_mode/helper_scripts/template_test_harness.py
+                          [15]: http://static.zybuluo.com/H4l0/35i329jbhdz6s8op9g2cjf9m/image.png
+                            [16]: http://static.zybuluo.com/H4l0/lf7fs3rrdr99x6ad1hqvpip8/image.png
+                              [17]: https://github.com/njv299/afl-unicorn/blob/master/unicorn_mode/helper_scripts/unicorn_loader.py
+                                [18]: http://static.zybuluo.com/H4l0/uvfj5uz0ez6dy4phuovk9ra0/image.png
+                                  [19]: https://en.wikipedia.org/wiki/X86_calling_conventions
+                                    [20]: http://static.zybuluo.com/H4l0/v04t6vdminh49o2vax0sei1d/image.png
+                                      [21]: https://www.us-cert.gov/bsi/articles/knowledge/coding-practices/guard-pages
+                                        [22]: http://static.zybuluo.com/H4l0/zavo1im4bsvut9lyhlgw5dqg/image.png
+                                          [23]: http://static.zybuluo.com/H4l0/zsu6i04vla85t1ssfuucxlda/image.png
+                                            [24]: http://static.zybuluo.com/H4l0/eq7ctx1kypwavl726a6e3x1j/image.png
+                                              [25]: https://github.com/njv299/afl-unicorn/issues/3
+                                                [26]: http://static.zybuluo.com/H4l0/sc3efkbkl3xdb5w6737nnsoq/image.png
+                                                  [27]: http://static.zybuluo.com/H4l0/1v1q3xpcqpkign6c2und3poo/image.png
+                                                    [28]: http://static.zybuluo.com/H4l0/alksdghs4wb9aro5wbri18s0/image.png
+                                                      [29]: http://static.zybuluo.com/H4l0/u1hv9jwp5quao9x6he8vju0d/image.png
+                                                        [30]: https://github.com/pbiernat/ripr</code></pre>
+  </section>
+
+  <section class="post-comments">
+
+    <!-- 将评论系统（例如Disqus、多说、友言、畅言等）提供的代码片段粘贴在这里 -->
+    
+</section>
+
+
+</article>
+
+
+            <footer class="footer">
+
+    <span class="footer__copyright">&copy; 2014-2015. | 由<a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a>强力驱动 | 主题<a href="https://github.com/someus/huno" target="_blank" rel="noopener">Huno</a></span>
+    
+</footer>
+        </div>
+    </div>
+
+    <!-- js files -->
+    <script src="/js/jquery.min.js"></script>
+    <script src="/js/main.js"></script>
+    <script src="/js/scale.fix.js"></script>
+    
+
+    
+
+    <script type="text/javascript" src="//cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript"> 
+        $(document).ready(function(){
+            MathJax.Hub.Config({ 
+                tex2jax: {inlineMath: [['[latex]','[/latex]'], ['\\(','\\)']]} 
+            });
+        });
+    </script>
+
+
+    
+
+    <script src="/js/jquery.min.js"></script>
+    <script src="/js/awesome-toc.min.js"></script>
+    <script>
+        $(document).ready(function(){
+            $.awesome_toc({
+                overlay: true,
+                contentId: "post-content",
+            });
+        });
+    </script>
+
+
+    
+    
+    <!--kill ie6 -->
+<!--[if IE 6]>
+  <script src="//letskillie6.googlecode.com/svn/trunk/2/zh_CN.js"></script>
+<![endif]-->
+
+</body>
+</html>
