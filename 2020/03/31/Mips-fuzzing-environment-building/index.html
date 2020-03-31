@@ -7,7 +7,7 @@
     
 
     <title>
-      多架构二进制 Fuzzing 的几种环境搭建 | Hexo 
+      Mips-fuzzing-environment-building | Hexo 
     </title>
 
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -18,15 +18,31 @@
 
     <meta name="description" content="前言本文介绍使用 afl 来 fuzzing x86 架构之外的程序环境的搭建，以及安装 afl 的必要组件来构建环境搭建的步骤。主要归纳搭建 AFL qemu 模式、AFL unicorn 模式、qiling 框架的方法步骤和纪录一下搭建过程中的一些坑。 x86 架构下的 fuzzing 环境x86 架构的 afl 安装和使用都比较简单，直接 git clone 项目到本地即可使用。 1http">
 <meta property="og:type" content="article">
-<meta property="og:title" content="多架构二进制 Fuzzing 的几种环境搭建 | Hexo">
+<meta property="og:title" content="Mips-fuzzing-environment-building | Hexo">
 <meta property="og:url" content="http://yoursite.com/2020/03/31/Mips-fuzzing-environment-building/index.html">
 <meta property="og:site_name" content="Hexo">
 <meta property="og:description" content="前言本文介绍使用 afl 来 fuzzing x86 架构之外的程序环境的搭建，以及安装 afl 的必要组件来构建环境搭建的步骤。主要归纳搭建 AFL qemu 模式、AFL unicorn 模式、qiling 框架的方法步骤和纪录一下搭建过程中的一些坑。 x86 架构下的 fuzzing 环境x86 架构的 afl 安装和使用都比较简单，直接 git clone 项目到本地即可使用。 1http">
 <meta property="og:locale" content="en_US">
-<meta property="article:published_time" content="2020-03-31T04:21:32.000Z">
-<meta property="article:modified_time" content="2020-03-31T04:25:29.542Z">
+<meta property="og:image" content="http://static.zybuluo.com/H4l0/6569ibdp7xzz6ooezuckzdqf/image.png">
+<meta property="og:image" content="http://static.zybuluo.com/H4l0/jb9bgkx65t4dcvpt4gvwz7yp/image.png">
+<meta property="og:image" content="http://static.zybuluo.com/H4l0/bd8w7esze48ug8ratghpnxpw/image.png">
+<meta property="og:image" content="http://static.zybuluo.com/H4l0/rs8epb0hhnuj9hx4z13673uq/image.png">
+<meta property="og:image" content="http://static.zybuluo.com/H4l0/7rop2knnaof0ry6zaamlikiy/image.png">
+<meta property="og:image" content="http://static.zybuluo.com/H4l0/venhkrvtubv4sap5su93c7o5/image.png">
+<meta property="og:image" content="http://static.zybuluo.com/H4l0/afuxzuemo6h1s3amcyn1rala/image.png">
+<meta property="og:image" content="http://static.zybuluo.com/H4l0/j1x07fjfl6b0xo74tcm2svcr/image.png">
+<meta property="og:image" content="http://static.zybuluo.com/H4l0/b5pxzjm4apsnxk50mv9laq9c/image.png">
+<meta property="og:image" content="http://static.zybuluo.com/H4l0/n13qiyq1kgmyxgxnxupljmnd/image.png">
+<meta property="og:image" content="http://static.zybuluo.com/H4l0/9nzgwgfrlmhau30tnu4y4nts/image.png">
+<meta property="og:image" content="http://static.zybuluo.com/H4l0/8qrugd4edubz74lb1g2vlq3u/image.png">
+<meta property="og:image" content="http://static.zybuluo.com/H4l0/7inx1rmng3ub7b9rc6yl85b7/image.png">
+<meta property="og:image" content="http://static.zybuluo.com/H4l0/1n1yqtfx1ctvd007c2elroqj/image.png">
+<meta property="og:image" content="http://static.zybuluo.com/H4l0/il9zrkgr718a6l9ue9h543e0/image.png">
+<meta property="article:published_time" content="2020-03-31T04:56:25.000Z">
+<meta property="article:modified_time" content="2020-03-31T04:57:54.499Z">
 <meta property="article:author" content="John Doe">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://static.zybuluo.com/H4l0/6569ibdp7xzz6ooezuckzdqf/image.png">
     
     
     
@@ -158,7 +174,7 @@ classes that you can use:
 
   <header class="post-header">
     
-    <h1 class="post-title">多架构二进制 Fuzzing 的几种环境搭建</h1>
+    <h1 class="post-title">Mips-fuzzing-environment-building</h1>
 
     
 
@@ -187,7 +203,7 @@ classes that you can use:
 
 <h4 id="有源码情况下的-fuzzing"><a href="#有源码情况下的-fuzzing" class="headerlink" title="有源码情况下的 fuzzing"></a>有源码情况下的 fuzzing</h4><p>目标程序有源码的情况下使用 AFL 进行 fuzzing 的步骤:</p>
 <p>1 . <strong>源码编译出目标程序</strong></p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">#include &lt;stdio.h&gt;</span><br><span class="line">#include &lt;stdlib.h&gt;</span><br><span class="line"></span><br><span class="line">int main(int argc,char **argv,char **env)&#123;</span><br><span class="line"></span><br><span class="line">            char buf[20];</span><br><span class="line">                    read(0,buf,0x100);</span><br><span class="line">                            return 1;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">afl-gcc test.c -o test</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">#include &lt;stdio.h&gt;</span><br><span class="line">#include &lt;stdlib.h&gt;</span><br><span class="line"></span><br><span class="line">int main(int argc,char **argv,char **env)&#123;</span><br><span class="line"></span><br><span class="line">        char buf[20];</span><br><span class="line">        read(0,buf,0x100);</span><br><span class="line">        return 1;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">afl-gcc test.c -o test</span><br></pre></td></tr></table></figure>
 
 <p>2 . <strong>开始 fuzzing</strong></p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">afl-fuzz -i in&#x2F; -o out&#x2F; -m none .&#x2F;test @@</span><br></pre></td></tr></table></figure>
@@ -210,71 +226,70 @@ classes that you can use:
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">.&#x2F;build.sh mips</span><br></pre></td></tr></table></figure>
 
 <p>这里编译完成之后会在<strong>上一级目录</strong>下生成 <code>afl-qemu-trace</code> 这个文件，这个文件其实就是编译好的 <code>qemu-mips</code>。</p>
-<p>![image.png-149.1kB][1]</p>
+<p><img src="http://static.zybuluo.com/H4l0/6569ibdp7xzz6ooezuckzdqf/image.png" alt="image.png-149.1kB"></p>
 <p>这里如果直接跑： <code>./afl-fuzz -i fuzz_in/ -o fuzz_out/ -Q -m none -- ./test @@</code> 可能会报错（原因是没有找到相应的 lib 动态库的路径）：</p>
 <ul>
-<li><p><strong>这里的 test 可执行文件是 mips 架构的动态链接程序</strong>，如果对使用 <code>gcc --static</code> 命令编译的静态链接的 mips 程序进行 fuzzing 就不会出错。</p>
-<p>![image.png-132.9kB][2]</p>
+<li><strong>这里的 test 可执行文件是 mips 架构的动态链接程序</strong>，如果对使用 <code>gcc --static</code> 命令编译的静态链接的 mips 程序进行 fuzzing 就不会出错。</li>
+</ul>
+<p><img src="http://static.zybuluo.com/H4l0/jb9bgkx65t4dcvpt4gvwz7yp/image.png" alt="image.png-132.9kB"></p>
 <p>上图中还是出现了错误的原因如下：</p>
 <p>这里还需要设置 <code>QEMU_LD_PREFI</code> 这个环境变量，也就是 mips 的 lib/ 目录所在的目录，见下图：</p>
-<p>![image.png-43.7kB][3]</p>
+<p><img src="http://static.zybuluo.com/H4l0/bd8w7esze48ug8ratghpnxpw/image.png" alt="image.png-43.7kB"></p>
 <ul>
 <li>这两个 so 文件可以自己从已有的 mips 架构设备固件的文件系统根目录下取出，也可以直接指定 <code>QEMU_LD_PREFI</code> 的值为设备固件文件系统的根目录。</li>
 <li><strong>注意</strong>：这里的库文件的文件名不能更改，否则会出错。</li>
 </ul>
 <p>或者这里可以使用 <code>apt search mips | grep libc6-mips-cross</code> 来安装 libc 库，下载好的目录位于 <code>/usr/</code> 目录下：</p>
-<p>![image.png-21.4kB][4]</p>
+<p><img src="http://static.zybuluo.com/H4l0/rs8epb0hhnuj9hx4z13673uq/image.png" alt="image.png-21.4kB"></p>
 <p>然后再重新指定 <code>QEMU_LD_PREFI</code> 变量为相应的目录即可。</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">export QEMU_LD_PREFI&#x3D;&#96;mips_lib_path&#96;</span><br></pre></td></tr></table></figure>
 
 <p>这时就可以成功 fuzzing 动态链接的 mips 程序：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">.&#x2F;afl-fuzz -i fuzz_in&#x2F; -o fuzz_out&#x2F; -Q -m none -- .&#x2F;test @@</span><br></pre></td></tr></table></figure>
 
-<p>![image.png-152.1kB][5]</p>
-</li>
-</ul>
-<h3 id="安装-AFL-unicorn-模式"><a href="#安装-AFL-unicorn-模式" class="headerlink" title="安装 AFL unicorn 模式"></a>安装 AFL unicorn 模式</h3><h4 id="AFL-仓库"><a href="#AFL-仓库" class="headerlink" title="AFL++ 仓库"></a>AFL++ 仓库</h4><p>   git clone 项目：</p>
-   <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">git <span class="built_in">clone</span> https://gitee.com/h4lo1/AFLplusplus.git</span><br><span class="line"><span class="built_in">cd</span> AFLplusplus/</span><br></pre></td></tr></table></figure>
+<p><img src="http://static.zybuluo.com/H4l0/7rop2knnaof0ry6zaamlikiy/image.png" alt="image.png-152.1kB"></p>
+<h3 id="安装-AFL-unicorn-模式"><a href="#安装-AFL-unicorn-模式" class="headerlink" title="安装 AFL unicorn 模式"></a>安装 AFL unicorn 模式</h3><h4 id="AFL-仓库"><a href="#AFL-仓库" class="headerlink" title="AFL++ 仓库"></a>AFL++ 仓库</h4><p>git clone 项目：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">git <span class="built_in">clone</span> https://gitee.com/h4lo1/AFLplusplus.git</span><br><span class="line"><span class="built_in">cd</span> AFLplusplus/</span><br></pre></td></tr></table></figure>
 
-<p>   安装必要的支持库：</p>
-   <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">apt-get install libgtk2.0-dev bison libtool libtool-bin</span><br></pre></td></tr></table></figure>
+<p>安装必要的支持库：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">apt-get install libgtk2.0-dev bison libtool libtool-bin</span><br></pre></td></tr></table></figure>
 
-<p>   同 AFL 的编译和安装步骤：</p>
-   <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sudo make -j8</span><br><span class="line">sudo make install</span><br></pre></td></tr></table></figure>
+<p>同 AFL 的编译和安装步骤：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sudo make -j8</span><br><span class="line">sudo make install</span><br></pre></td></tr></table></figure>
 
-<p>   查看相应的版本，是 2.60d 版本的就说明安装正确：</p>
-<p>   ![image.png-142kB][6]</p>
-<h4 id="unicornafl"><a href="#unicornafl" class="headerlink" title="unicornafl"></a>unicornafl</h4><p>   为了使 afl 支持 -U 参数的模式，还需要安装 unicornafl，前提是要安装好 AFL++ 这个工具。</p>
-<p>   如果直接安装官方的 afl-fuzz 2.52b 版本的话，会提示没有 -U 这个参数，所以就需要提前安装好 AFL++。</p>
-<p>   ![image.png-48.8kB][7]</p>
-<p>   安装步骤：</p>
-<p>   1 . git clone unicornafl ：</p>
-   <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">https:&#x2F;&#x2F;gitee.com&#x2F;h4lo1&#x2F;unicorn--afl</span><br></pre></td></tr></table></figure>
+<p>查看相应的版本，是 2.60d 版本的就说明安装正确：</p>
+<p><img src="http://static.zybuluo.com/H4l0/venhkrvtubv4sap5su93c7o5/image.png" alt="image.png-142kB"></p>
+<h4 id="unicornafl"><a href="#unicornafl" class="headerlink" title="unicornafl"></a>unicornafl</h4><p>为了使 afl 支持 -U 参数的模式，还需要安装 unicornafl，前提是要安装好 AFL++ 这个工具。</p>
+<p>如果直接安装官方的 afl-fuzz 2.52b 版本的话，会提示没有 -U 这个参数，所以就需要提前安装好 AFL++。</p>
+<p><img src="http://static.zybuluo.com/H4l0/afuxzuemo6h1s3amcyn1rala/image.png" alt="image.png-48.8kB"></p>
+<p>安装步骤：</p>
+<p>1 . git clone unicornafl ：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">https:&#x2F;&#x2F;gitee.com&#x2F;h4lo1&#x2F;unicorn--afl</span><br></pre></td></tr></table></figure>
 
-<p>   2 . 编译：</p>
-   <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">make -j8</span><br></pre></td></tr></table></figure>
+<p>2 . 编译：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">make -j8</span><br></pre></td></tr></table></figure>
 
-<p>   3 . 安装：</p>
-   <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">cd .&#x2F;bindings&#x2F;python</span><br><span class="line">.&#x2F;setup.py install --user</span><br></pre></td></tr></table></figure>
+<p>3 . 安装：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">cd .&#x2F;bindings&#x2F;python</span><br><span class="line">.&#x2F;setup.py install --user</span><br></pre></td></tr></table></figure>
 
-<p>   如果在 python 中 <code>import uncornafl</code> 没问题的话，就说明安装成功。</p>
-<p>   ![image.png-94.1kB][8]</p>
+<p>如果在 python 中 <code>import uncornafl</code> 没问题的话，就说明安装成功。</p>
+<p><img src="http://static.zybuluo.com/H4l0/j1x07fjfl6b0xo74tcm2svcr/image.png" alt="image.png-94.1kB"></p>
 <ul>
 <li>因为下面要说的 qiling 框架只支持 python3，所以最好使用 python3 来编译这个模块。</li>
 </ul>
-<p>   设置默认 python 环境为 python3 的方法：</p>
-<p>   在 <code>~/.bashrc</code> 文件最末尾加入下面两句话即可，分别为 python3 和 pip3 在系统下的绝对路径：</p>
-   <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">alias python&#x3D;&quot;&#x2F;usr&#x2F;bin&#x2F;python3.6&quot;</span><br><span class="line">alias pip&#x3D;&quot;&#x2F;usr&#x2F;bin&#x2F;pip3&quot;</span><br></pre></td></tr></table></figure>
+<p>设置默认 python 环境为 python3 的方法：</p>
+<p>在 <code>~/.bashrc</code> 文件最末尾加入下面两句话即可，分别为 python3 和 pip3 在系统下的绝对路径：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">alias python&#x3D;&quot;&#x2F;usr&#x2F;bin&#x2F;python3.6&quot;</span><br><span class="line">alias pip&#x3D;&quot;&#x2F;usr&#x2F;bin&#x2F;pip3&quot;</span><br></pre></td></tr></table></figure>
 
-<p>   ![image.png-33.2kB][9]</p>
-<p>   之后 <code>source ~/.bashrc</code> 即可。</p>
+<p><img src="http://static.zybuluo.com/H4l0/b5pxzjm4apsnxk50mv9laq9c/image.png" alt="image.png-33.2kB"></p>
+<p>之后 <code>source ~/.bashrc</code> 即可。</p>
 <ul>
-<li><p>或者要安装 unicornafl 组件的话，这里可以直接在 AFL++ 的 unicorn_mode 目录下，运行 <code>build_unicorn_support.sh</code> 可执行文件即可。</p>
-<p>![image.png-20.8kB][10]</p>
-</li>
+<li>或者要安装 unicornafl 组件的话，这里可以直接在 AFL++ 的 unicorn_mode 目录下，运行 <code>build_unicorn_support.sh</code> 可执行文件即可。</li>
 </ul>
+<p><img src="http://static.zybuluo.com/H4l0/n13qiyq1kgmyxgxnxupljmnd/image.png" alt="image.png-20.8kB"></p>
 <h3 id="使用-qiling-afl-fuzzing-mips-程序"><a href="#使用-qiling-afl-fuzzing-mips-程序" class="headerlink" title="使用 qiling-afl fuzzing mips 程序"></a>使用 qiling-afl fuzzing mips 程序</h3><ul>
-<li><p>qiling 框架是一个二进制分析框架，针对于框架的学习参考官方项目的 [README][11]。</p>
+<li>qiling 框架是一个二进制分析框架，针对于框架的学习参考官方项目的 <a href="https://github.com/qilingframework/qiling" target="_blank" rel="noopener">README</a>。</li>
+</ul>
 <p>官方的介绍：</p>
 <blockquote>
 <p>麒麟框架不仅仅是一个仿真平台或逆向工程工具。它还将“二进制插桩”和“二进制仿真”结合一起。借助麒麟框架，你可以：</p>
@@ -288,65 +303,43 @@ classes that you can use:
 <li>任意补丁“脱壳”已加壳程序内容</li>
 </ul>
 </blockquote>
-</li>
-</ul>
-<h4 id="安装方法-1"><a href="#安装方法-1" class="headerlink" title="安装方法"></a>安装方法</h4><p>   首先安装带有 unicornafl 的 qiling 框架，同样直接 git clone 即可：</p>
-   <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git clone https:&#x2F;&#x2F;gitee.com&#x2F;h4lo1&#x2F;qiling-unicornafl</span><br></pre></td></tr></table></figure>
+<h4 id="安装方法-1"><a href="#安装方法-1" class="headerlink" title="安装方法"></a>安装方法</h4><p>首先安装带有 unicornafl 的 qiling 框架，同样直接 git clone 即可：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git clone https:&#x2F;&#x2F;gitee.com&#x2F;h4lo1&#x2F;qiling-unicornafl</span><br></pre></td></tr></table></figure>
 
-<p>   clone 完成后，进入到 afl/ 目录下，对 <code>fuzz_x8664_linux.py</code> 进行 fuzzing。</p>
-   <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;root&#x2F;github&#x2F;AFLplusplus&#x2F;afl-fuzz -i .&#x2F;afl_inputs -o .&#x2F;afl_outputs -m none -U -- python3 .&#x2F;fuzz_x8664_linux.py @@</span><br></pre></td></tr></table></figure>
+<p>clone 完成后，进入到 afl/ 目录下，对 <code>fuzz_x8664_linux.py</code> 进行 fuzzing。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;root&#x2F;github&#x2F;AFLplusplus&#x2F;afl-fuzz -i .&#x2F;afl_inputs -o .&#x2F;afl_outputs -m none -U -- python3 .&#x2F;fuzz_x8664_linux.py @@</span><br></pre></td></tr></table></figure>
 
-<h3 id="使用-afl-unicorn-框架-fuzzing-mips-程序"><a href="#使用-afl-unicorn-框架-fuzzing-mips-程序" class="headerlink" title="使用 afl-unicorn 框架 fuzzing mips 程序"></a>使用 afl-unicorn 框架 fuzzing mips 程序</h3><p>   afl-unicorn 框架也是一个可以 fuzzing 多架构的指令集的 afl 集成框架。关于该工具的介绍可以参考[这篇文章][12]。</p>
+<h3 id="使用-afl-unicorn-框架-fuzzing-mips-程序"><a href="#使用-afl-unicorn-框架-fuzzing-mips-程序" class="headerlink" title="使用 afl-unicorn 框架 fuzzing mips 程序"></a>使用 afl-unicorn 框架 fuzzing mips 程序</h3><p>afl-unicorn 框架也是一个可以 fuzzing 多架构的指令集的 afl 集成框架。关于该工具的介绍可以参考<a href="https://xz.aliyun.com/t/5968" target="_blank" rel="noopener">这篇文章</a>。</p>
 <ul>
-<li>该工具的优势是还可以 fuzzing 一些裸机系统的指令代码，如 RTOS 系统，可以参考[这篇文章][13]。</li>
+<li>该工具的优势是还可以 fuzzing 一些裸机系统的指令代码，如 RTOS 系统，可以参考<a href="https://www.anquanke.com/post/id/170078" target="_blank" rel="noopener">这篇文章</a>。</li>
 </ul>
-<h4 id="安装方法："><a href="#安装方法：" class="headerlink" title="安装方法："></a>安装方法：</h4><p>   git clone 项目到本地：</p>
-   <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git clone https:&#x2F;&#x2F;gitee.com&#x2F;h4lo1&#x2F;Afl_unicorn.git</span><br></pre></td></tr></table></figure>
+<h4 id="安装方法："><a href="#安装方法：" class="headerlink" title="安装方法："></a>安装方法：</h4><p>git clone 项目到本地：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git clone https:&#x2F;&#x2F;gitee.com&#x2F;h4lo1&#x2F;Afl_unicorn.git</span><br></pre></td></tr></table></figure>
 
-<p>   编译 unicorn：</p>
-   <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">cd Afl_unicorn&#x2F;unicorn_mode</span><br><span class="line">.&#x2F;build_unicorn_support.sh</span><br></pre></td></tr></table></figure>
+<p>编译 unicorn：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">cd Afl_unicorn&#x2F;unicorn_mode</span><br><span class="line">.&#x2F;build_unicorn_support.sh</span><br></pre></td></tr></table></figure>
 
-<p>   如果编译完成没有问题的话，会提示下面的语句：</p>
-   <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[+] All set, you can now use Unicorn mode (-U) in afl-fuzz!</span><br></pre></td></tr></table></figure>
+<p>如果编译完成没有问题的话，会提示下面的语句：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[+] All set, you can now use Unicorn mode (-U) in afl-fuzz!</span><br></pre></td></tr></table></figure>
 
 <ul>
-<li><p>笔者在 Ubuntu 16.04 测试没问题，但是在 ubuntu 18.04 上怎么都安装不上。。。</p>
+<li>笔者在 Ubuntu 16.04 测试没问题，但是在 ubuntu 18.04 上怎么都安装不上。。。</li>
+</ul>
 <p>这里可以使用下面的命令测试能否跑起来：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">cd samples&#x2F;simple</span><br><span class="line"></span><br><span class="line">afl-showmap -U -m none -o .test-instr0 -- python simple_test_harness.py .&#x2F;sample_inputs&#x2F;sample1.bin</span><br></pre></td></tr></table></figure>
 
 <p>如果出现下面的提示就表示没问题：</p>
-<p>![image.png-219.5kB][14]</p>
+<p><img src="http://static.zybuluo.com/H4l0/9nzgwgfrlmhau30tnu4y4nts/image.png" alt="image.png-219.5kB"></p>
 <p>在 18.04 上会提示失败原因如： <code>No instrumentation detected</code>，估计和 unicorn 组件有关：</p>
-<p>![image.png-285.8kB][15]</p>
+<p><img src="http://static.zybuluo.com/H4l0/8qrugd4edubz74lb1g2vlq3u/image.png" alt="image.png-285.8kB"></p>
 <p>运行界面：</p>
-<p>![image.png-438.1kB][16]</p>
-</li>
-</ul>
-<h2 id="待解决的问题"><a href="#待解决的问题" class="headerlink" title="待解决的问题"></a>待解决的问题</h2><p>   对于 MIPS 某些程序，还是会提示处理用例超时？</p>
-<p>   ![image.png-138kB][17]</p>
-<p>   再如：</p>
-<p>   ![image.png-137.2kB][18]</p>
-<h2 id="参考文章"><a href="#参考文章" class="headerlink" title="参考文章"></a>参考文章</h2><p>   [AFL（二）afl-qemu无源码fuzz][19]<br>   [深入分析 afl / qemu-mode(qemu模式) / afl-unicorn 编译及安装存在的问题以及相应的解决方案][20]</p>
-<pre><code>[1]: http://static.zybuluo.com/H4l0/6569ibdp7xzz6ooezuckzdqf/image.png
-  [2]: http://static.zybuluo.com/H4l0/jb9bgkx65t4dcvpt4gvwz7yp/image.png
-    [3]: http://static.zybuluo.com/H4l0/bd8w7esze48ug8ratghpnxpw/image.png
-      [4]: http://static.zybuluo.com/H4l0/rs8epb0hhnuj9hx4z13673uq/image.png
-        [5]: http://static.zybuluo.com/H4l0/7rop2knnaof0ry6zaamlikiy/image.png
-          [6]: http://static.zybuluo.com/H4l0/venhkrvtubv4sap5su93c7o5/image.png
-            [7]: http://static.zybuluo.com/H4l0/afuxzuemo6h1s3amcyn1rala/image.png
-              [8]: http://static.zybuluo.com/H4l0/j1x07fjfl6b0xo74tcm2svcr/image.png
-                [9]: http://static.zybuluo.com/H4l0/b5pxzjm4apsnxk50mv9laq9c/image.png
-                  [10]: http://static.zybuluo.com/H4l0/n13qiyq1kgmyxgxnxupljmnd/image.png
-                    [11]: https://github.com/qilingframework/qiling
-                      [12]: https://xz.aliyun.com/t/5968
-                        [13]: https://www.anquanke.com/post/id/170078
-                          [14]: http://static.zybuluo.com/H4l0/9nzgwgfrlmhau30tnu4y4nts/image.png
-                            [15]: http://static.zybuluo.com/H4l0/8qrugd4edubz74lb1g2vlq3u/image.png
-                              [16]: http://static.zybuluo.com/H4l0/7inx1rmng3ub7b9rc6yl85b7/image.png
-                                [17]: http://static.zybuluo.com/H4l0/1n1yqtfx1ctvd007c2elroqj/image.png
-                                  [18]: http://static.zybuluo.com/H4l0/il9zrkgr718a6l9ue9h543e0/image.png
-                                    [19]: http://www.gandalf.site/2019/01/aflafl-qemufuzz.html
-                                      [20]: https://blog.csdn.net/song_lee/article/details/104307504</code></pre>
+<p><img src="http://static.zybuluo.com/H4l0/7inx1rmng3ub7b9rc6yl85b7/image.png" alt="image.png-438.1kB"></p>
+<h2 id="待解决的问题"><a href="#待解决的问题" class="headerlink" title="待解决的问题"></a>待解决的问题</h2><p>对于 MIPS 某些程序，还是会提示处理用例超时？</p>
+<p><img src="http://static.zybuluo.com/H4l0/1n1yqtfx1ctvd007c2elroqj/image.png" alt="image.png-138kB"></p>
+<p>再如：</p>
+<p><img src="http://static.zybuluo.com/H4l0/il9zrkgr718a6l9ue9h543e0/image.png" alt="image.png-137.2kB"></p>
+<h2 id="参考文章"><a href="#参考文章" class="headerlink" title="参考文章"></a>参考文章</h2><p><a href="http://www.gandalf.site/2019/01/aflafl-qemufuzz.html" target="_blank" rel="noopener">AFL（二）afl-qemu无源码fuzz</a><br><a href="https://blog.csdn.net/song_lee/article/details/104307504" target="_blank" rel="noopener">深入分析 afl / qemu-mode(qemu模式) / afl-unicorn 编译及安装存在的问题以及相应的解决方案</a></p>
+
   </section>
 
   <section class="post-comments">
